@@ -1,3 +1,4 @@
 *.log
 *.gz
 *.log.gz
+*.deb
