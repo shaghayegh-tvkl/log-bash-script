@@ -1,9 +1,8 @@
 # !/bin/bash
-# This is my script to analyze HaProxy Logs
+# This is my script to analyze HAProxy logs
 # For now, only availabe for Debian-based Operating Systems
 
-#echo "Enter Start Date (YYYYMMDD): "
-# read start
+# read the start date
 start=$1
 
 # Just in case to install packages
