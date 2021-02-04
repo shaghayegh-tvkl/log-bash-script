@@ -1,64 +1,45 @@
-# !/bin/bash
-# This is my script to analyze HAProxy logs
-# For now, only availabe for Debian-based Operating Systems
+#!/bin/bash
+#This is my script to analyze HAProxy logs
+#For now, only availabe for Debian-based Operating Systems
 
 # read the start date in case of reading one file
 start=$1
+end=`date +%Y%m%d -d "$start+10 days"`
+
 
 # Just in case to install packages
-apt-get update 
+#apt-get update
 # to use zcat command
-apt-get install gzip -y
+#apt-get install gzip -y
 #to use ripgrep command
-apt-get install curl -y
-curl -LO https://github.com/BurntSushi/ripgrep/releases/download/12.1.1/ripgrep_12.1.1_amd64.deb
-sudo dpkg -i ripgrep_12.1.1_amd64.deb
- 
+#apt-get install curl -y
+#curl -LO https://github.com/BurntSushi/ripgrep/releases/download/12.1.1/ripgrep_12.1.1_amd64.deb
+#sudo dpkg -i ripgrep_12.1.1_amd64.deb
 
 
 # GNU grep goes a lot faster in the C locale than with UTF-8.
 export LC_ALL=C
 
+#i="0"
+#while [ $i -le 6 ]
+for i in {0..5}
+do
+   date_next=`date +%Y%m%d -d "$start+$i days"`
+   files+=" ../logs/haproxy_latest.$date_next.log.gz"
+   #i=$[$i+1]
+done
+echo "This is files after: $files"
 
-# Example with grep (works much slower)
-# successful_responses=$(sudo zcat ../logs/haproxy_latest.$start.log.gz | grep -Po '"Payload":.*?[^\\]",' | grep -E '(GET|POST|PUT|DELETE)' | grep -vn 'prometheus' | cut -f 11 -d ' ' | grep -c '2..')
-# client_errors=$(sudo zcat ../logs/haproxy_latest.$start.log.gz | grep -Po '"Payload":.*?[^\\]",' | grep -E '(GET|POST|PUT|DELETE)' | grep -vn 'prometheus' | cut -f 11 -d ' ' | grep -c '4..')
-# server_errors=$(sudo zcat ../logs/haproxy_latest.$start.log.gz | grep -Po '"Payload":.*?[^\\]",' | grep -E '(GET|POST|PUT|DELETE)' | grep -vn 'prometheus' | cut -f 11 -d ' ' | grep -c '5..')
-
-# For one file
-# Using ripgrep almost 4 times faster than grep
-#successful_responses=$(sudo zcat ../logs/haproxy_latest.$start.log.gz | rg -j 2 -o '"Payload":.*?[^\\]",' | rg -j 2 '(GET|POST|PUT|DELETE)' | rg -j 2 -v 'prometheus' | cut -f 11 -d ' ' | rg -j 2 -c '2..')
-#client_errors=$(sudo zcat ../logs/haproxy_latest.$start.log.gz | rg -j 2 -o '"Payload":.*?[^\\]",' | rg -j 2 '(GET|POST|PUT|DELETE)' | rg -j 2 -v 'prometheus' | cut -f 11 -d ' ' | rg -j 2 -c '4..')
-#server_errors=$(sudo zcat ../logs/haproxy_latest.$start.log.gz | rg -j 2 -o '"Payload":.*?[^\\]",' | rg -j 2 '(GET|POST|PUT|DELETE)' | rg -j 2 -v 'prometheus' | cut -f 11 -d ' ' | rg -j 2 -c '5..')
-
-
-# As the column for status code is different in prometheus api logs we count them separately
-#successful_responses_prometheus=$(sudo zcat ../logs/haproxy_latest.$start.log.gz | rg -j 2 -o '"Payload":.*?[^\\]",' | rg -j 2 '(GET|POST|PUT|DELETE)' | rg -j 2 'prometheus' | cut -f 11 -d ' ' | rg -j 2 -c '2..')
-#client_errors_prometheus=$(sudo zcat ../logs/haproxy_latest.$start.log.gz | rg -j 2 -o '"Payload":.*?[^\\]",' | rg -j 2 '(GET|POST|PUT|DELETE)' | rg -j 2 'prometheus' | cut -f 11 -d ' ' | rg -j 2 -c '4..')
-#server_errors_prometheus=$(sudo zcat ../logs/haproxy_latest.$start.log.gz | rg -j 2 -o '"Payload":.*?[^\\]",' | rg -j 2 '(GET|POST|PUT|DELETE)' | rg -j 2 'prometheus' | cut -f 11 -d ' ' | rg -j 2 -c '5..')
-
-
-# ----------------------------------------------------------------------------------------------------------------
 
 
 # For all the file in one directory
 # Using ripgrep almost 4 times faster than grep
-output_api=$(sudo zcat $(ls -t ../logs/haproxy_latest.*.log.gz) | rg -j 2 -o '"Payload":.*?[^\\]",' | rg -j 2 '(GET|POST|PUT|DELETE)' |  rg -j 2 -v 'prometheus' | cut -f 11 -d ' ')
+
+output_api=$(sudo zcat $files | rg -j 2 -o '"Payload":.*?[^\\]",' | rg -j 2 '(GET|POST|PUT|DELETE)' | cut -f 11 -d ' ')
+#output_api=0
 successful_responses=$(echo "$output_api" | rg -j 2 -c '2..')
 client_errors=$(echo "$output_api" | rg -j 2 -c '4..')
 server_errors=$(echo "$output_api" | rg -j 2 -c '5..')
 
-# As the column for status code is different in prometheus api logs we count them separately
-
-output_prometheus=$(sudo zcat $(ls -t ../logs/haproxy_latest.*.log.gz) | rg -j 2 -o '"Payload":.*?[^\\]",' | rg -j 2 '(GET|POST|PUT|DELETE)'  | rg -j 2 'prometheus' | cut -f 11 -d ' ')
-successful_responses_prometheus=$(echo "$output_prometheus" | rg -j 2 -c '2..')
-client_errors_prometheus=$(echo "$output_prometheus" | rg -j 2 -c '4..')
-server_errors_prometheus=$(echo "$output_prometheus" | rg -j 2 -c '5..')
-
-# Sum all the code counts
-count_2xx=$((successful_responses+successful_responses_prometheus))
-count_4xx=$((client_errors+client_errors_prometheus))
-count_5xx=$((server_errors+server_errors_prometheus))
-
 # Show the results
-echo "$start [00:00:00] --  2xx:$count_2xx    4xx:$count_4xx    5xx:$count_5xx"
+echo "`date -d $start +%m-%d-%Y'  '%T` `date -d $end +%m-%d-%Y'  '%T`   2xx:$successful_responses    4xx:$client_errors    5xx:$server_errors"
