@@ -5,6 +5,7 @@
 # read the start date and the number of reports
 read -p 'Enter Start Date (YYYY-MM-DD): ' start
 read -p 'Number of Reports: ' N
+N=$[$N-1]
 start=`date +%Y%m%d -d $start`
 end=`date +%Y%m%d -d "$start+$N days"`
 
@@ -22,18 +23,17 @@ end=`date +%Y%m%d -d "$start+$N days"`
 export LC_ALL=C
 
 i="0"
-while [ $i -lt $N ]
+while [ $i -le $N ]
 do
    date_next=`date +%Y%m%d -d "$start+$i days"`
    files+="../logs/haproxy_latest.$date_next.log.gz "
    i=$[$i+1]
 done
-echo $files
 
 # For all the file in one directory
 # Using ripgrep almost 4 times faster than grep
 
-output_api=$(sudo zcat $files | rg -j 2 '(GET|POST|PUT|DELETE)' | cut -f 11 -d ' ')
+output_api=$(sudo zcat $files | rg -j 2 '(GET|POST|PUT|DELETE|PATCH)' | cut -f 11 -d ' ')
 successful_responses=$(echo "$output_api" | rg -j 2 -c '2..')
 client_errors=$(echo "$output_api" | rg -j 2 -c '4..')
 server_errors=$(echo "$output_api" | rg -j 2 -c '5..')
