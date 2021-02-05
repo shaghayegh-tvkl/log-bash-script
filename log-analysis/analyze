@@ -1,17 +1,18 @@
 #!/bin/bash
-#This is my script to analyze HAProxy logs
-#For now, only availabe for Debian-based Operating Systems
+# This is my script to analyze HAProxy logs
+# For now, only availabe for Debian-based Operating Systems
 
-# read the start date in case of reading one file
-start=$1
-end=`date +%Y%m%d -d "$start+10 days"`
-
+# read the start date and the number of reports
+read -p 'Enter Start Date (YYYY-MM-DD): ' start
+read -p 'Number of Reports: ' N
+start=`date +%Y%m%d -d $start`
+end=`date +%Y%m%d -d "$start+$N days"`
 
 # Just in case to install packages
 #apt-get update
-# to use zcat command
+# Intall to use zcat command
 #apt-get install gzip -y
-#to use ripgrep command
+# Install to use ripgrep command
 #apt-get install curl -y
 #curl -LO https://github.com/BurntSushi/ripgrep/releases/download/12.1.1/ripgrep_12.1.1_amd64.deb
 #sudo dpkg -i ripgrep_12.1.1_amd64.deb
@@ -20,23 +21,19 @@ end=`date +%Y%m%d -d "$start+10 days"`
 # GNU grep goes a lot faster in the C locale than with UTF-8.
 export LC_ALL=C
 
-#i="0"
-#while [ $i -le 6 ]
-for i in {0..5}
+i="0"
+while [ $i -lt $N ]
 do
    date_next=`date +%Y%m%d -d "$start+$i days"`
-   files+=" ../logs/haproxy_latest.$date_next.log.gz"
-   #i=$[$i+1]
+   files+="../logs/haproxy_latest.$date_next.log.gz "
+   i=$[$i+1]
 done
-echo "This is files after: $files"
-
-
+echo $files
 
 # For all the file in one directory
 # Using ripgrep almost 4 times faster than grep
 
-output_api=$(sudo zcat $files | rg -j 2 -o '"Payload":.*?[^\\]",' | rg -j 2 '(GET|POST|PUT|DELETE)' | cut -f 11 -d ' ')
-#output_api=0
+output_api=$(sudo zcat $files | rg -j 2 '(GET|POST|PUT|DELETE)' | cut -f 11 -d ' ')
 successful_responses=$(echo "$output_api" | rg -j 2 -c '2..')
 client_errors=$(echo "$output_api" | rg -j 2 -c '4..')
 server_errors=$(echo "$output_api" | rg -j 2 -c '5..')
